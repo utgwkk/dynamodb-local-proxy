@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -11,8 +12,17 @@ import (
 	slogcontext "github.com/PumpkinSeed/slog-context"
 	"github.com/cockroachdb/errors"
 	"github.com/gofrs/uuid/v5"
+	"github.com/itchyny/gojq"
 	"github.com/thinkgos/httpcurl"
+	"github.com/utgwkk/dynamodb-local-proxy/internal/util"
 )
+
+//go:embed fill_warm_throughput.jq
+var gojqQueryStr string
+
+var gojqQuery = util.Must(gojq.Compile(
+	util.Must(gojq.Parse(gojqQueryStr)),
+))
 
 type Handler struct {
 	DynamoDBLocalAddr string
@@ -90,41 +100,24 @@ func (h *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) error {
 
 func (h *Handler) rewriteDescribeTableResponse(ctx context.Context, w http.ResponseWriter, proxyResp *http.Response) error {
 	slog.InfoContext(ctx, "attempting rewrite response JSON")
-	data := &struct {
-		Table map[string]any
-	}{}
-	if err := json.NewDecoder(proxyResp.Body).Decode(data); err != nil {
+	data := map[string]any{}
+	if err := json.NewDecoder(proxyResp.Body).Decode(&data); err != nil {
 		return errors.WithStack(err)
 	}
 	slog.DebugContext(ctx, "raw response", slog.Any("data", data))
 
-	// append dummy WarmThroughput for table
-	if _, ok := data.Table["WarmThroughput"]; !ok {
-		data.Table["WarmThroughput"] = map[string]any{
-			"ReadUnitsPerSecond":  5,
-			"Status":              "ACTIVE",
-			"WriteUnitsPerSecond": 5,
-		}
+	it := gojqQuery.RunWithContext(ctx, data)
+	out, ok := it.Next()
+	if !ok {
+		return errors.New("gojqQuery failed")
 	}
-
-	// append dummy WarmThroughput for GSI
-	for _, gsi := range data.Table["GlobalSecondaryIndexes"].([]any) {
-		gsi2, ok := gsi.(map[string]any)
-		if !ok {
-			continue
-		}
-		if _, ok := gsi2["WarmThroughput"]; !ok {
-			gsi2["WarmThroughput"] = map[string]any{
-				"ReadUnitsPerSecond":  5,
-				"Status":              "ACTIVE",
-				"WriteUnitsPerSecond": 5,
-			}
-		}
+	if err, ok := out.(error); ok {
+		return errors.WithStack(err)
 	}
 
 	w.WriteHeader(proxyResp.StatusCode)
 	h.copyHTTPResponseHeader(w, proxyResp)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
+	if err := json.NewEncoder(w).Encode(out); err != nil {
 		return errors.WithStack(err)
 	}
 	slog.InfoContext(ctx, "response rewrite succeeded")

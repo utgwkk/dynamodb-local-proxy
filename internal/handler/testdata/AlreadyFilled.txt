@@ -1,0 +1,6 @@
+HTTP/1.1 200 OK
+Date: Mon, 30 Mar 2026 13:51:44 GMT
+Content-Length: 1212
+Content-Type: text/plain; charset=utf-8
+
+{"Table":{"AttributeDefinitions":[{"AttributeName":"pk","AttributeType":"S"},{"AttributeName":"sk","AttributeType":"S"},{"AttributeName":"h","AttributeType":"S"},{"AttributeName":"r","AttributeType":"S"}],"CreationDateTime":1774869223.954,"DeletionProtectionEnabled":false,"GlobalSecondaryIndexes":[{"IndexArn":"arn:aws:dynamodb:ddblocal:000000000000:table/test/index/gsi-test","IndexName":"gsi-test","IndexSizeBytes":0,"IndexStatus":"ACTIVE","ItemCount":0,"KeySchema":[{"AttributeName":"h","KeyType":"HASH"},{"AttributeName":"r","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"},"ProvisionedThroughput":{"ReadCapacityUnits":3,"WriteCapacityUnits":3},"WarmThroughput":{"ReadUnitsPerSecond":2,"Status":"ACTIVE","WriteUnitsPerSecond":2}}],"ItemCount":0,"KeySchema":[{"AttributeName":"pk","KeyType":"HASH"},{"AttributeName":"sk","KeyType":"RANGE"}],"ProvisionedThroughput":{"LastDecreaseDateTime":0,"LastIncreaseDateTime":0,"NumberOfDecreasesToday":0,"ReadCapacityUnits":3,"WriteCapacityUnits":3},"TableArn":"arn:aws:dynamodb:ddblocal:000000000000:table/test","TableName":"test","TableSizeBytes":0,"TableStatus":"ACTIVE","WarmThroughput":{"ReadUnitsPerSecond":2,"Status":"ACTIVE","WriteUnitsPerSecond":2}}}

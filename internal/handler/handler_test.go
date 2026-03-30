@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -131,6 +132,79 @@ func TestHandler(t *testing.T) {
 		for _, gsi := range decoded.Table.GlobalSecondaryIndexes {
 			if gsi.WarmThroughput == nil {
 				t.Errorf("GSI %s does not have WarmThroughput Field", gsi.IndexName)
+			}
+		}
+
+		// check rest field remains
+		var decoded2 struct {
+			Table map[string]any
+		}
+		if err := json.Unmarshal(bodyCopy, &decoded2); err != nil {
+			t.Fatal("failed to parse response as JSON:", err.Error())
+		}
+		for _, k := range []string{
+			"AttributeDefinitions",
+			"TableName",
+			"KeySchema",
+			"TableStatus",
+			"CreationDateTime",
+			"ProvisionedThroughput",
+			"TableSizeBytes",
+			"ItemCount",
+			"TableArn",
+			"GlobalSecondaryIndexes",
+			"DeletionProtectionEnabled",
+		} {
+			if _, ok := decoded2.Table[k]; !ok {
+				t.Errorf("%s field not present", k)
+			}
+		}
+	})
+
+	t.Run("AlreadyFilled", func(t *testing.T) {
+		h := newTestHandler(t, "AlreadyFilled.txt")
+		rec := httptest.NewRecorder()
+		req, err := http.NewRequestWithContext(
+			t.Context(),
+			http.MethodPost,
+			"http://localhost:8001",
+			strings.NewReader(`{"TableName":"test"}`),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Logf("unexpected status code: %d (want %d)", rec.Code, http.StatusOK)
+			t.Log("body:", rec.Body.String())
+			t.FailNow()
+		}
+
+		var decoded DescribeTableResponse
+		bodyCopy := rec.Body.Bytes()
+		if err := json.NewDecoder(rec.Body).Decode(&decoded); err != nil {
+			t.Fatal("failed to parse response as JSON:", err.Error())
+		}
+
+		// check table WarmThroughput
+		want := &WarmThroughput{
+			ReadUnitsPerSecond:  2,
+			Status:              "ACTIVE",
+			WriteUnitsPerSecond: 2,
+		}
+		if !reflect.DeepEqual(decoded.Table.WarmThroughput, want) {
+			t.Errorf("WarmThroughput mismatch\nwant: %+v", *want)
+		}
+
+		// check GSI WarmThroughput
+		if len(decoded.Table.GlobalSecondaryIndexes) == 0 {
+			t.Fatal("Table.GlobalSecondaryIndexes must not be empty")
+		}
+		for _, gsi := range decoded.Table.GlobalSecondaryIndexes {
+			if !reflect.DeepEqual(gsi.WarmThroughput, want) {
+				t.Errorf("WarmThroughput mismatch\nwant: %+v", *want)
 			}
 		}
 

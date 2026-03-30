@@ -161,6 +161,63 @@ func TestHandler(t *testing.T) {
 		}
 	})
 
+	t.Run("TableCreatedButNoIndex", func(t *testing.T) {
+		h := newTestHandler(t, "TableCreatedButNoIndex.txt")
+		rec := httptest.NewRecorder()
+		req, err := http.NewRequestWithContext(
+			t.Context(),
+			http.MethodPost,
+			"http://localhost:8001",
+			strings.NewReader(`{"TableName":"test"}`),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Logf("unexpected status code: %d (want %d)", rec.Code, http.StatusOK)
+			t.Log("body:", rec.Body.String())
+			t.FailNow()
+		}
+
+		var decoded DescribeTableResponse
+		bodyCopy := rec.Body.Bytes()
+		if err := json.NewDecoder(rec.Body).Decode(&decoded); err != nil {
+			t.Fatal("failed to parse response as JSON:", err.Error())
+		}
+
+		// check table WarmThroughput
+		if decoded.Table.WarmThroughput == nil {
+			t.Error("table does not have WarmThroughput Field")
+		}
+
+		// check rest field remains
+		var decoded2 struct {
+			Table map[string]any
+		}
+		if err := json.Unmarshal(bodyCopy, &decoded2); err != nil {
+			t.Fatal("failed to parse response as JSON:", err.Error())
+		}
+		for _, k := range []string{
+			"AttributeDefinitions",
+			"TableName",
+			"KeySchema",
+			"TableStatus",
+			"CreationDateTime",
+			"ProvisionedThroughput",
+			"TableSizeBytes",
+			"ItemCount",
+			"TableArn",
+			"DeletionProtectionEnabled",
+		} {
+			if _, ok := decoded2.Table[k]; !ok {
+				t.Errorf("%s field not present", k)
+			}
+		}
+	})
+
 	t.Run("AlreadyFilled", func(t *testing.T) {
 		h := newTestHandler(t, "AlreadyFilled.txt")
 		rec := httptest.NewRecorder()

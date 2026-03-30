@@ -8,6 +8,7 @@ require (
 	github.com/cockroachdb/errors v1.12.0
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/ne-sachirou/go-graceful v0.2.1
+	github.com/thinkgos/httpcurl v0.1.2
 )
 
 require (

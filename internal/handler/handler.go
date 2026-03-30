@@ -11,6 +11,7 @@ import (
 	slogcontext "github.com/PumpkinSeed/slog-context"
 	"github.com/cockroachdb/errors"
 	"github.com/gofrs/uuid/v5"
+	"github.com/thinkgos/httpcurl"
 )
 
 type Handler struct {
@@ -55,12 +56,13 @@ func (h *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	cloneReq := h.cloneRequestForProxy(r)
 
+	curl, err := httpcurl.IntoCurl(cloneReq)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	slog.DebugContext(
 		ctx, "attempting to request",
-		slog.String("host", cloneReq.Host),
-		slog.String("method", cloneReq.Method),
-		slog.String("path", cloneReq.URL.Path),
-		slog.String("xAmzTarget", cloneReq.Header.Get("X-Amz-Target")),
+		slog.String("asCurl", curl),
 	)
 
 	proxyResp, err := h.httpClient.Do(cloneReq)

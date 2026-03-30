@@ -18,21 +18,22 @@ import (
 func main() {
 	ctx := context.Background()
 
-	slog.SetDefault(
-		slog.New(
-			slogcontext.NewHandler(
-				slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{}),
-			),
-		),
-	)
-
 	cfg, err := config.Parse()
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to parse environment variables", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	slog.SetLogLoggerLevel(cfg.LogLevel)
+	slog.SetDefault(
+		slog.New(
+			slogcontext.NewHandler(
+				slog.NewJSONHandler(
+					os.Stdout,
+					&slog.HandlerOptions{Level: cfg.LogLevel},
+				),
+			),
+		),
+	)
 
 	h := handler.New(
 		cfg.DynamoDBLocalAddr,

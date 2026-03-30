@@ -1,0 +1,183 @@
+package handler
+
+import (
+	"bufio"
+	"embed"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path"
+	"strings"
+	"testing"
+
+	slogcontext "github.com/PumpkinSeed/slog-context"
+)
+
+//go:embed testdata
+var fs embed.FS
+
+func newTestServer(t *testing.T, filename string) *httptest.Server {
+	t.Helper()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f, err := fs.Open(path.Join("testdata", filename))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		defer f.Close()
+
+		resp, err := http.ReadResponse(bufio.NewReader(f), nil)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		defer resp.Body.Close()
+
+		w.WriteHeader(resp.StatusCode)
+		for k, vals := range resp.Header {
+			for _, v := range vals {
+				w.Header().Add(k, v)
+			}
+		}
+
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			t.Log("failed to write response:", err.Error())
+		}
+	}))
+
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func newTestHandler(t *testing.T, filename string) *Handler {
+	srv := newTestServer(t, filename)
+	addr := strings.TrimPrefix(srv.URL, "http://")
+	h := New(addr, srv.Client())
+	return h
+}
+
+type WarmThroughput struct {
+	ReadUnitsPerSecond  int
+	Status              string
+	WriteUnitsPerSecond int
+}
+
+type GlobalSecondaryIndex struct {
+	IndexName      string          `json:"IndexName"`
+	WarmThroughput *WarmThroughput `json:"WarmThroughput"`
+}
+
+type Table struct {
+	GlobalSecondaryIndexes []*GlobalSecondaryIndex `json:"GlobalSecondaryIndexes"`
+
+	WarmThroughput *WarmThroughput `json:"WarmThroughput"`
+}
+
+type DescribeTableResponse struct {
+	Table *Table
+}
+
+func TestHandler(t *testing.T) {
+	slog.SetDefault(
+		slog.New(
+			slogcontext.NewHandler(
+				slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{}),
+			),
+		),
+	)
+
+	t.Run("TableExists", func(t *testing.T) {
+		h := newTestHandler(t, "TableExists.txt")
+		rec := httptest.NewRecorder()
+		req, err := http.NewRequestWithContext(
+			t.Context(),
+			http.MethodPost,
+			"http://localhost:8001",
+			strings.NewReader(`{"TableName":"test"}`),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Logf("unexpected status code: %d (want %d)", rec.Code, http.StatusOK)
+			t.Log("body:", rec.Body.String())
+			t.FailNow()
+		}
+
+		var decoded DescribeTableResponse
+		bodyCopy := rec.Body.Bytes()
+		if err := json.NewDecoder(rec.Body).Decode(&decoded); err != nil {
+			t.Fatal("failed to parse response as JSON:", err.Error())
+		}
+
+		// check table WarmThroughput
+		if decoded.Table.WarmThroughput == nil {
+			t.Error("table does not have WarmThroughput Field")
+		}
+
+		// check GSI WarmThroughput
+		if len(decoded.Table.GlobalSecondaryIndexes) == 0 {
+			t.Fatal("Table.GlobalSecondaryIndexes must not be empty")
+		}
+		for _, gsi := range decoded.Table.GlobalSecondaryIndexes {
+			if gsi.WarmThroughput == nil {
+				t.Errorf("GSI %s does not have WarmThroughput Field", gsi.IndexName)
+			}
+		}
+
+		// check rest field remains
+		var decoded2 struct {
+			Table map[string]any
+		}
+		if err := json.Unmarshal(bodyCopy, &decoded2); err != nil {
+			t.Fatal("failed to parse response as JSON:", err.Error())
+		}
+		for _, k := range []string{
+			"AttributeDefinitions",
+			"TableName",
+			"KeySchema",
+			"TableStatus",
+			"CreationDateTime",
+			"ProvisionedThroughput",
+			"TableSizeBytes",
+			"ItemCount",
+			"TableArn",
+			"GlobalSecondaryIndexes",
+			"DeletionProtectionEnabled",
+		} {
+			if _, ok := decoded2.Table[k]; !ok {
+				t.Errorf("%s field not present", k)
+			}
+		}
+	})
+
+	t.Run("TableNotFound", func(t *testing.T) {
+		h := newTestHandler(t, "TableNotFound.txt")
+		rec := httptest.NewRecorder()
+		req, err := http.NewRequestWithContext(
+			t.Context(),
+			http.MethodGet,
+			"http://localhost:8001",
+			strings.NewReader(`{"TableName":"test"}`),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("unexpected status code: %d (want %d)", rec.Code, http.StatusBadRequest)
+			t.Error("Body:", rec.Body.String())
+		}
+	})
+}

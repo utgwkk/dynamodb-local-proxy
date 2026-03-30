@@ -1,0 +1,9 @@
+HTTP/1.1 200 OK
+Server: Jetty(12.0.31)
+Date: Mon, 30 Mar 2026 11:27:24 GMT
+x-amzn-RequestId: d26572f9-17ca-4079-91e6-fa4918996525
+Content-Type: application/x-amz-json-1.0
+x-amz-crc32: 3551897371
+Content-Length: 1051
+
+{"Table":{"AttributeDefinitions":[{"AttributeName":"pk","AttributeType":"S"},{"AttributeName":"sk","AttributeType":"S"},{"AttributeName":"h","AttributeType":"S"},{"AttributeName":"r","AttributeType":"S"}],"TableName":"test","KeySchema":[{"AttributeName":"pk","KeyType":"HASH"},{"AttributeName":"sk","KeyType":"RANGE"}],"TableStatus":"ACTIVE","CreationDateTime":1774869223.954,"ProvisionedThroughput":{"LastIncreaseDateTime":0.000,"LastDecreaseDateTime":0.000,"NumberOfDecreasesToday":0,"ReadCapacityUnits":3,"WriteCapacityUnits":3},"TableSizeBytes":0,"ItemCount":0,"TableArn":"arn:aws:dynamodb:ddblocal:000000000000:table/test","GlobalSecondaryIndexes":[{"IndexName":"gsi-test","KeySchema":[{"AttributeName":"h","KeyType":"HASH"},{"AttributeName":"r","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"},"IndexStatus":"ACTIVE","ProvisionedThroughput":{"ReadCapacityUnits":3,"WriteCapacityUnits":3},"IndexSizeBytes":0,"ItemCount":0,"IndexArn":"arn:aws:dynamodb:ddblocal:000000000000:table/test/index/gsi-test"}],"DeletionProtectionEnabled":false}}

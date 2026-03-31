@@ -24,8 +24,6 @@ services:
     volumes:
       - "./docker/dynamodb:/home/dynamodblocal/data"
     working_dir: /home/dynamodblocal
-    networks:
-      - dynamodb
   dynamodb-local-proxy:
     image: ghcr.io/utgwkk/dynamodb-local-proxy
     environment:
@@ -34,12 +32,6 @@ services:
       - PORT=8888
     ports:
       - "8888:8888"
-    networks:
-      - dynamodb
-
-networks:
-  dynamodb:
-    driver: bridge
 ```
 
 You can get patched response by executing `aws --endpoint-url=http://localhost:8888 dynamodb describe-table --table-name <table-name>`.

@@ -14,7 +14,11 @@ By sitting in front of DynamoDB Local and injecting a dummy `WarmThroughput` val
 
 ## Usage
 
-### With Docker Compose
+### With AWS CLI
+
+You can get patched response by executing `aws --endpoint-url=http://localhost:8888 dynamodb describe-table --table-name <table-name>`.
+
+### Run with Docker Compose
 
 ```yml
 services:
@@ -34,4 +38,30 @@ services:
       - "8888:8888"
 ```
 
-You can get patched response by executing `aws --endpoint-url=http://localhost:8888 dynamodb describe-table --table-name <table-name>`.
+### Run with GitHub Actions
+
+Using Docker Compose's bridge network mode with GitHub Actions can be slow, so I recommend starting it using the `services` method in GitHub Actions workflows.
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      dynamodb-local:
+        image: amazon/dynamodb-local
+      dynamodb-local-proxy:
+        image: ghcr.io/utgwkk/dynamodb-local-proxy
+        env:
+          DYNAMODB_LOCAL_ADDR: dynamodb-local:8000
+          HOST: 0.0.0.0
+          PORT: 8888
+        ports:
+          - 8888:8888
+    steps:
+      - run: aws --endpoint-url=http://localhost:8888 dynamodb list-tables
+```

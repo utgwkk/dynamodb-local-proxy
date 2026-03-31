@@ -23,7 +23,7 @@ provider "aws" {
 }
 
 resource "aws_dynamodb_table" "no_gsi" {
-  name         = "test"
+  name         = "no_gsi"
   billing_mode = "PAY_PER_REQUEST"
 
   attribute {
@@ -40,7 +40,7 @@ resource "aws_dynamodb_table" "no_gsi" {
 }
 
 resource "aws_dynamodb_table" "with_gsi" {
-  name         = "test"
+  name         = "with_gsi"
   billing_mode = "PAY_PER_REQUEST"
 
   attribute {

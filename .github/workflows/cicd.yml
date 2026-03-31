@@ -32,6 +32,11 @@ jobs:
   e2e:
     name: E2E
     runs-on: ubuntu-latest
+    services:
+      dynamodb-local:
+        image: amazon/dynamodb-local
+        ports:
+          - 8000:8000
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -39,7 +44,6 @@ jobs:
           go-version-file: go.mod
       - run: go mod download -x
       - run: go build -o ./dynamodb-local-proxy .
-      - run: docker compose up -d --wait
       - run: ./dynamodb-local-proxy > out.log 2>&1 &
         env:
           LOG_LEVEL: DEBUG

@@ -22,8 +22,8 @@ provider "aws" {
   }
 }
 
-resource "aws_dynamodb_table" "test" {
-  name         = "test"
+resource "aws_dynamodb_table" "no_gsi" {
+  name         = "no_gsi"
   billing_mode = "PAY_PER_REQUEST"
 
   attribute {
@@ -33,6 +33,57 @@ resource "aws_dynamodb_table" "test" {
   attribute {
     name = "sk"
     type = "S"
+  }
+
+  hash_key  = "pk"
+  range_key = "sk"
+}
+
+resource "aws_dynamodb_table" "with_gsi" {
+  name         = "with_gsi"
+  billing_mode = "PAY_PER_REQUEST"
+
+  attribute {
+    name = "pk"
+    type = "S"
+  }
+  attribute {
+    name = "sk"
+    type = "S"
+  }
+  attribute {
+    name = "field1"
+    type = "S"
+  }
+  attribute {
+    name = "field2"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name = "gsi1"
+
+    key_schema {
+      attribute_name = "field1"
+      key_type       = "HASH"
+    }
+
+    projection_type = "ALL"
+  }
+
+  global_secondary_index {
+    name = "gsi2"
+
+    key_schema {
+      attribute_name = "field2"
+      key_type       = "HASH"
+    }
+    key_schema {
+      attribute_name = "field1"
+      key_type       = "RANGE"
+    }
+
+    projection_type = "ALL"
   }
 
   hash_key  = "pk"

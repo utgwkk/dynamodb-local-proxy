@@ -11,6 +11,7 @@ import (
 	slogcontext "github.com/PumpkinSeed/slog-context"
 	"github.com/ne-sachirou/go-graceful"
 	"github.com/ne-sachirou/go-graceful/gracefulhttp"
+	sloghttp "github.com/samber/slog-http"
 	"github.com/utgwkk/dynamodb-local-proxy/internal/config"
 	"github.com/utgwkk/dynamodb-local-proxy/internal/handler"
 )
@@ -40,12 +41,14 @@ func main() {
 		http.DefaultClient,
 	)
 
+	mw := sloghttp.New(slog.Default())
+
 	slog.InfoContext(ctx, "listening", slog.String("addr", cfg.BindAddr()))
 
 	if err := gracefulhttp.ListenAndServe(
 		ctx,
 		cfg.BindAddr(),
-		h,
+		mw(h),
 		graceful.GracefulShutdownTimeout(10*time.Second),
 	); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.ErrorContext(ctx, "failed to listen", slog.Any("error", err))

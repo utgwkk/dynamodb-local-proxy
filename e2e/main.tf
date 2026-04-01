@@ -1,6 +1,9 @@
 terraform {
   required_providers {
-    aws = "~> 6.0"
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
   }
   backend "local" {
     path = "terraform.tfstate"

@@ -13,6 +13,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/gofrs/uuid/v5"
 	"github.com/itchyny/gojq"
+	sloghttp "github.com/samber/slog-http"
 	"github.com/thinkgos/httpcurl"
 	"github.com/utgwkk/dynamodb-local-proxy/internal/util"
 )
@@ -54,6 +55,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if requestId := generateRequestId(); requestId != "" {
 		r = r.WithContext(slogcontext.WithValue(r.Context(), "requestId", requestId))
 	}
+
+	sloghttp.AddCustomAttributes(r, slog.String("xAmzTarget", r.Header.Get("X-Amz-Target")))
 
 	if err := h.serveHTTP(w, r); err != nil {
 		slog.ErrorContext(r.Context(), "internal server error", slog.Any("error", err))

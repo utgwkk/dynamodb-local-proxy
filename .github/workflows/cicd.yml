@@ -9,16 +9,6 @@ permissions:
   packages: write
 
 jobs:
-  build:
-    name: build
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-      - run: go mod download -x
-      - run: go build .
   test:
     name: test
     runs-on: ubuntu-24.04-arm
@@ -61,7 +51,7 @@ jobs:
   build-and-push:
     name: CD
     runs-on: ubuntu-24.04-arm
-    needs: [build, test, e2e]
+    needs: [test, e2e]
     steps:
       - uses: actions/checkout@v6
       - uses: docker/setup-qemu-action@v4

@@ -12,6 +12,15 @@ By sitting in front of DynamoDB Local and injecting a dummy `WarmThroughput` val
 
 [^1]: https://github.com/hashicorp/terraform-provider-aws/pull/41308
 
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DYNAMODB_LOCAL_ADDR` | `localhost:8000` | Address of DynamoDB Local to proxy requests to |
+| `HOST` | `localhost` | Host address the proxy listens on |
+| `PORT` | `8888` | Port the proxy listens on |
+| `LOG_LEVEL` | `INFO` | Log level (`DEBUG`, `INFO`, `WARN`, `ERROR`) |
+
 ## Usage
 
 ### With AWS CLI

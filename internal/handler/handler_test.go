@@ -1,63 +1,21 @@
 package handler
 
 import (
-	"bufio"
-	"embed"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path"
 	"reflect"
 	"strings"
 	"testing"
 
 	slogcontext "github.com/PumpkinSeed/slog-context"
+	"github.com/utgwkk/dynamodb-local-proxy/internal/httptestmock"
 )
 
-//go:embed testdata
-var fs embed.FS
-
-func newTestServer(t *testing.T, filename string) *httptest.Server {
-	t.Helper()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		f, err := fs.Open(path.Join("testdata", filename))
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-			return
-		}
-		defer f.Close()
-
-		resp, err := http.ReadResponse(bufio.NewReader(f), nil)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-			return
-		}
-		defer resp.Body.Close()
-
-		w.WriteHeader(resp.StatusCode)
-		for k, vals := range resp.Header {
-			for _, v := range vals {
-				w.Header().Add(k, v)
-			}
-		}
-
-		if _, err := io.Copy(w, resp.Body); err != nil {
-			t.Log("failed to write response:", err.Error())
-		}
-	}))
-
-	t.Cleanup(srv.Close)
-	return srv
-}
-
 func newTestHandler(t *testing.T, filename string) *Handler {
-	srv := newTestServer(t, filename)
+	srv := httptestmock.NewServer(t, filename)
 	addr := strings.TrimPrefix(srv.URL, "http://")
 	h := New(addr, srv.Client())
 	return h

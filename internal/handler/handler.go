@@ -18,11 +18,11 @@ import (
 	"github.com/utgwkk/dynamodb-local-proxy/internal/util"
 )
 
-//go:embed fill_warm_throughput.jq
-var gojqQueryFillWarmThroughputStr string
+//go:embed fill_describe_table.jq
+var gojqQueryFillDescribeTableStr string
 
-var gojqQueryFillWarmThroughput = util.Must(gojq.Compile(
-	util.Must(gojq.Parse(gojqQueryFillWarmThroughputStr)),
+var gojqQueryFillDescribeTable = util.Must(gojq.Compile(
+	util.Must(gojq.Parse(gojqQueryFillDescribeTableStr)),
 ))
 
 //go:embed rewrite_unknown_operation_exception.jq
@@ -118,7 +118,7 @@ func (h *Handler) rewriteDescribeTableResponse(ctx context.Context, w http.Respo
 	}
 	slog.DebugContext(ctx, "raw response", slog.Any("data", data))
 
-	it := gojqQueryFillWarmThroughput.RunWithContext(ctx, data)
+	it := gojqQueryFillDescribeTable.RunWithContext(ctx, data)
 	out, ok := it.Next()
 	if !ok {
 		return errors.New("gojqQuery failed")

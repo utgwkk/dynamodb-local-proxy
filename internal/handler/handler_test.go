@@ -27,6 +27,11 @@ type WarmThroughput struct {
 	WriteUnitsPerSecond int
 }
 
+type ProvisionedThroughput struct {
+	ReadCapacityUnits  int
+	WriteCapacityUnits int
+}
+
 type GlobalSecondaryIndex struct {
 	IndexName      string          `json:"IndexName"`
 	WarmThroughput *WarmThroughput `json:"WarmThroughput"`
@@ -35,7 +40,8 @@ type GlobalSecondaryIndex struct {
 type Table struct {
 	GlobalSecondaryIndexes []*GlobalSecondaryIndex `json:"GlobalSecondaryIndexes"`
 
-	WarmThroughput *WarmThroughput `json:"WarmThroughput"`
+	WarmThroughput        *WarmThroughput        `json:"WarmThroughput"`
+	ProvisionedThroughput *ProvisionedThroughput `json:"ProvisionedThroughput"`
 }
 
 type DescribeTableResponse struct {
@@ -173,6 +179,38 @@ func TestHandler(t *testing.T) {
 			if _, ok := decoded2.Table[k]; !ok {
 				t.Errorf("%s field not present", k)
 			}
+		}
+	})
+
+	t.Run("NoProvisionedThroughput", func(t *testing.T) {
+		h := newTestHandler(t, "NoProvisionedThroughput.txt")
+		rec := httptest.NewRecorder()
+		req, err := http.NewRequestWithContext(
+			t.Context(),
+			http.MethodPost,
+			"http://localhost:8001",
+			strings.NewReader(`{"TableName":"test"}`),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Logf("unexpected status code: %d (want %d)", rec.Code, http.StatusOK)
+			t.Log("body:", rec.Body.String())
+			t.FailNow()
+		}
+
+		var decoded DescribeTableResponse
+		if err := json.NewDecoder(rec.Body).Decode(&decoded); err != nil {
+			t.Fatal("failed to parse response as JSON:", err.Error())
+		}
+
+		// check table ProvisionedThroughput
+		if decoded.Table.ProvisionedThroughput == nil {
+			t.Error("table does not have ProvisionedThroughput Field")
 		}
 	})
 

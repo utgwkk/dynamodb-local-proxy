@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+Content-Type: application/x-amz-json-1.0
+X-Amz-Request-Id: e051d1e2-940f-400d-9a9f-7fb6af633a5e
+X-Amzn-Requestid: 09461538-6bac-4a68-a5a9-8f8e294954a8
+Date: Thu, 16 Apr 2026 13:04:33 GMT
+Content-Length: 529
+
+{"Table":{"TableName":"no_gsi","TableStatus":"ACTIVE","TableArn":"arn:aws:dynamodb:us-east-1:000000000000:table/no_gsi","TableId":"0dbc6e41-01b4-4755-9189-0c0a4317be22","CreationDateTime":1776344340,"KeySchema":[{"AttributeName":"pk","KeyType":"HASH"},{"AttributeName":"sk","KeyType":"RANGE"}],"AttributeDefinitions":[{"AttributeName":"sk","AttributeType":"S"},{"AttributeName":"pk","AttributeType":"S"}],"ItemCount":0,"TableSizeBytes":0,"BillingModeSummary":{"BillingMode":"PAY_PER_REQUEST"},"DeletionProtectionEnabled":false}}

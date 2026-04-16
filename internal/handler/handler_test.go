@@ -44,14 +44,14 @@ type WarmThroughput struct {
 }
 
 type GlobalSecondaryIndex struct {
-	IndexName      string          `json:"IndexName"`
-	WarmThroughput *WarmThroughput `json:"WarmThroughput"`
+	IndexName      string
+	WarmThroughput *WarmThroughput
 }
 
 type Table struct {
-	GlobalSecondaryIndexes []*GlobalSecondaryIndex `json:"GlobalSecondaryIndexes"`
+	GlobalSecondaryIndexes []*GlobalSecondaryIndex
 
-	WarmThroughput *WarmThroughput `json:"WarmThroughput"`
+	WarmThroughput *WarmThroughput
 }
 
 type DescribeTableResponse struct {

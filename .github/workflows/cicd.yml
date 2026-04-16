@@ -28,6 +28,9 @@ jobs:
           - label: dynamodb-local
             image: amazon/dynamodb-local
             container-port: 8000
+          - label: ministack
+            image: ministackorg/ministack
+            container-port: 4566
     services:
       backend:
         image: ${{ matrix.image }}

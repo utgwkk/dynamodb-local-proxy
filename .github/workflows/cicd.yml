@@ -28,6 +28,9 @@ jobs:
           - label: dynamodb-local
             image: amazon/dynamodb-local
             container-port: 8000
+          - label: sivchari/kumo
+            image: ghcr.io/sivchari/kumo
+            container-port: 4566
     services:
       dynamodb-local:
         image: ${{ matrix.image }}

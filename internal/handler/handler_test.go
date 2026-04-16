@@ -71,6 +71,7 @@ func checkRestFieldRemains(t *testing.T, body []byte) {
 }
 
 func TestHandler(t *testing.T) {
+	t.Parallel()
 	slog.SetDefault(
 		slog.New(
 			slogcontext.NewHandler(
@@ -80,6 +81,7 @@ func TestHandler(t *testing.T) {
 	)
 
 	t.Run("TableExists", func(t *testing.T) {
+		t.Parallel()
 		h := newTestHandler(t, "TableExists.txt")
 		rec := httptest.NewRecorder()
 		req, err := http.NewRequestWithContext(
@@ -125,6 +127,7 @@ func TestHandler(t *testing.T) {
 	})
 
 	t.Run("TableCreatedButNoIndex", func(t *testing.T) {
+		t.Parallel()
 		h := newTestHandler(t, "TableCreatedButNoIndex.txt")
 		rec := httptest.NewRecorder()
 		req, err := http.NewRequestWithContext(
@@ -160,6 +163,7 @@ func TestHandler(t *testing.T) {
 	})
 
 	t.Run("AlreadyFilled", func(t *testing.T) {
+		t.Parallel()
 		h := newTestHandler(t, "AlreadyFilled.txt")
 		rec := httptest.NewRecorder()
 		req, err := http.NewRequestWithContext(
@@ -210,6 +214,7 @@ func TestHandler(t *testing.T) {
 	})
 
 	t.Run("TableNotFound", func(t *testing.T) {
+		t.Parallel()
 		h := newTestHandler(t, "TableNotFound.txt")
 		rec := httptest.NewRecorder()
 		req, err := http.NewRequestWithContext(

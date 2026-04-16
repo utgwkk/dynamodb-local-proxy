@@ -31,6 +31,9 @@ jobs:
           - label: ministack
             image: ministackorg/ministack
             container-port: 4566
+          - label: floci
+            image: hectorvent/floci
+            container-port: 4566
     services:
       backend:
         image: ${{ matrix.image }}

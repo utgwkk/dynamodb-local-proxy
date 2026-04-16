@@ -15,6 +15,7 @@ import (
 )
 
 func newTestHandler(t *testing.T, filename string) *Handler {
+	t.Helper()
 	srv := httptestmock.NewServer(t, filename)
 	addr := strings.TrimPrefix(srv.URL, "http://")
 	h := New(addr, srv.Client())

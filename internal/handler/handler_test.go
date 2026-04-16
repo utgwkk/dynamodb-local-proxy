@@ -21,6 +21,22 @@ func newTestHandler(t *testing.T, filename string) *Handler {
 	return h
 }
 
+func newCliRequest(t *testing.T, method, body, xAmzTarget string) *http.Request {
+	t.Helper()
+
+	req, err := http.NewRequestWithContext(
+		t.Context(),
+		method,
+		"http://localhost:8001",
+		strings.NewReader(body),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("X-Amz-Target", xAmzTarget)
+	return req
+}
+
 type WarmThroughput struct {
 	ReadUnitsPerSecond  int
 	Status              string
@@ -84,16 +100,7 @@ func TestHandler(t *testing.T) {
 		t.Parallel()
 		h := newTestHandler(t, "TableExists.txt")
 		rec := httptest.NewRecorder()
-		req, err := http.NewRequestWithContext(
-			t.Context(),
-			http.MethodPost,
-			"http://localhost:8001",
-			strings.NewReader(`{"TableName":"test"}`),
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+		req := newCliRequest(t, http.MethodPost, `{"TableName":"test"}`, "DynamoDB_20120810.DescribeTable")
 
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
@@ -130,16 +137,7 @@ func TestHandler(t *testing.T) {
 		t.Parallel()
 		h := newTestHandler(t, "TableCreatedButNoIndex.txt")
 		rec := httptest.NewRecorder()
-		req, err := http.NewRequestWithContext(
-			t.Context(),
-			http.MethodPost,
-			"http://localhost:8001",
-			strings.NewReader(`{"TableName":"test"}`),
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+		req := newCliRequest(t, http.MethodPost, `{"TableName":"test"}`, "DynamoDB_20120810.DescribeTable")
 
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
@@ -166,16 +164,7 @@ func TestHandler(t *testing.T) {
 		t.Parallel()
 		h := newTestHandler(t, "AlreadyFilled.txt")
 		rec := httptest.NewRecorder()
-		req, err := http.NewRequestWithContext(
-			t.Context(),
-			http.MethodPost,
-			"http://localhost:8001",
-			strings.NewReader(`{"TableName":"test"}`),
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+		req := newCliRequest(t, http.MethodPost, `{"TableName":"test"}`, "DynamoDB_20120810.DescribeTable")
 
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
@@ -217,16 +206,7 @@ func TestHandler(t *testing.T) {
 		t.Parallel()
 		h := newTestHandler(t, "TableNotFound.txt")
 		rec := httptest.NewRecorder()
-		req, err := http.NewRequestWithContext(
-			t.Context(),
-			http.MethodGet,
-			"http://localhost:8001",
-			strings.NewReader(`{"TableName":"test"}`),
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+		req := newCliRequest(t, http.MethodPost, `{"TableName":"test"}`, "DynamoDB_20120810.DescribeTable")
 
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusBadRequest {

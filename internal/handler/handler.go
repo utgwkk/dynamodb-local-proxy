@@ -19,10 +19,17 @@ import (
 )
 
 //go:embed fill_warm_throughput.jq
-var gojqQueryStr string
+var gojqQueryFillWarmThroughputStr string
 
-var gojqQuery = util.Must(gojq.Compile(
-	util.Must(gojq.Parse(gojqQueryStr)),
+var gojqQueryFillWarmThroughput = util.Must(gojq.Compile(
+	util.Must(gojq.Parse(gojqQueryFillWarmThroughputStr)),
+))
+
+//go:embed rewrite_unknown_operation_exception.jq
+var gojqQueryRewriteUnknownOperationExceptionStr string
+
+var gojqQueryRewriteUnknownOperationException = util.Must(gojq.Compile(
+	util.Must(gojq.Parse(gojqQueryRewriteUnknownOperationExceptionStr)),
 ))
 
 type Handler struct {
@@ -91,6 +98,8 @@ func (h *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) error {
 
 	if h.isDescribeTableRequest(cloneReq) && proxyResp.StatusCode == http.StatusOK {
 		return h.rewriteDescribeTableResponse(ctx, w, proxyResp)
+	} else if h.isListTagResourceRequest(cloneReq) && proxyResp.StatusCode == http.StatusBadRequest {
+		return h.rewriteListTagResource400Response(ctx, w, proxyResp)
 	} else {
 		w.WriteHeader(proxyResp.StatusCode)
 		h.copyHTTPResponseHeader(w, proxyResp)
@@ -109,7 +118,33 @@ func (h *Handler) rewriteDescribeTableResponse(ctx context.Context, w http.Respo
 	}
 	slog.DebugContext(ctx, "raw response", slog.Any("data", data))
 
-	it := gojqQuery.RunWithContext(ctx, data)
+	it := gojqQueryFillWarmThroughput.RunWithContext(ctx, data)
+	out, ok := it.Next()
+	if !ok {
+		return errors.New("gojqQuery failed")
+	}
+	if err, ok := out.(error); ok {
+		return errors.WithStack(err)
+	}
+
+	w.WriteHeader(proxyResp.StatusCode)
+	h.copyHTTPResponseHeader(w, proxyResp)
+	if err := json.NewEncoder(w).Encode(out); err != nil {
+		return errors.WithStack(err)
+	}
+	slog.InfoContext(ctx, "response rewrite succeeded")
+	return nil
+}
+
+func (h *Handler) rewriteListTagResource400Response(ctx context.Context, w http.ResponseWriter, proxyResp *http.Response) error {
+	slog.InfoContext(ctx, "attempting rewrite response JSON")
+	data := map[string]any{}
+	if err := json.NewDecoder(proxyResp.Body).Decode(&data); err != nil {
+		return errors.WithStack(err)
+	}
+	slog.DebugContext(ctx, "raw response", slog.Any("data", data))
+
+	it := gojqQueryRewriteUnknownOperationException.RunWithContext(ctx, data)
 	out, ok := it.Next()
 	if !ok {
 		return errors.New("gojqQuery failed")
@@ -151,4 +186,8 @@ func (h *Handler) copyHTTPResponseHeader(w http.ResponseWriter, proxyResp *http.
 
 func (h *Handler) isDescribeTableRequest(req *http.Request) bool {
 	return strings.HasSuffix(req.Header.Get("X-Amz-Target"), ".DescribeTable")
+}
+
+func (h *Handler) isListTagResourceRequest(req *http.Request) bool {
+	return strings.HasSuffix(req.Header.Get("X-Amz-Target"), ".ListTagsOfResource")
 }

@@ -269,4 +269,45 @@ func TestHandler(t *testing.T) {
 			t.Error("Body:", rec.Body.String())
 		}
 	})
+
+	t.Run("ListTagsOfResourceNotSupported", func(t *testing.T) {
+		for _, backend := range []string{
+			"dynamodb-local",
+			"kumo",
+		} {
+			t.Run(backend, func(t *testing.T) {
+				h := newTestHandler(t, "ListTagsOfResourceNotSupported_"+backend+".txt")
+				rec := httptest.NewRecorder()
+				req, err := http.NewRequestWithContext(
+					t.Context(),
+					http.MethodPost,
+					"http://localhost:8001",
+					strings.NewReader(`{"ResourceArn":"arn:aws:dynamodb:us-east-1:000000000000:table/with_gsi"}`),
+				)
+				if err != nil {
+					t.Fatal(err)
+				}
+				req.Header.Set("X-Amz-Target", "DynamoDB_20120810.ListTagsOfResource")
+
+				h.ServeHTTP(rec, req)
+				if rec.Code != http.StatusBadRequest {
+					t.Logf("unexpected status code: %d (want %d)", rec.Code, http.StatusBadRequest)
+					t.Log("body:", rec.Body.String())
+					t.FailNow()
+				}
+
+				var decoded struct {
+					Type string `json:"__type"`
+				}
+				if err := json.NewDecoder(rec.Body).Decode(&decoded); err != nil {
+					t.Fatal("failed to parse response as JSON:", err.Error())
+				}
+
+				const want = "com.amazonaws.dynamodb.v20120810#UnknownOperationException"
+				if decoded.Type != want {
+					t.Errorf("unexpected __type: %s (want %s)", decoded.Type, want)
+				}
+			})
+		}
+	})
 }

@@ -1,0 +1,8 @@
+HTTP/1.1 400 Bad Request
+Server: Jetty(12.0.31)
+Date: Thu, 16 Apr 2026 12:39:53 GMT
+x-amzn-RequestId: 3fb464a0-4210-4522-98b8-de024eabe00b
+Content-Type: application/x-amz-json-1.0
+Content-Length: 137
+
+{"__type":"com.amazonaws.dynamodb.v20120810#UnknownOperationException","Message":"Tagging is not currently supported in DynamoDB Local."}

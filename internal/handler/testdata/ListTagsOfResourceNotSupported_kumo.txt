@@ -1,0 +1,8 @@
+HTTP/1.1 400 Bad Request
+Content-Type: application/x-amz-json-1.0
+X-Amz-Request-Id: 99baabd1-6145-423d-b4fb-8275b2395a72
+X-Amzn-Requestid: 7e5e2a7a-5889-4e0b-9b4d-8edb5d8f1a22
+Date: Thu, 16 Apr 2026 12:40:16 GMT
+Content-Length: 94
+
+{"__type":"UnknownOperationException","message":"The action ListTagsOfResource is not valid"}

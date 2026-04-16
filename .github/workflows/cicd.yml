@@ -32,7 +32,7 @@ jobs:
             image: ghcr.io/sivchari/kumo
             container-port: 4566
     services:
-      dynamodb-local:
+      backend:
         image: ${{ matrix.image }}
         ports:
           - 8000:${{ matrix.container-port }}

@@ -15,10 +15,27 @@ import (
 )
 
 func newTestHandler(t *testing.T, filename string) *Handler {
+	t.Helper()
 	srv := httptestmock.NewServer(t, filename)
 	addr := strings.TrimPrefix(srv.URL, "http://")
 	h := New(addr, srv.Client())
 	return h
+}
+
+func newCliRequest(t *testing.T, method, body, xAmzTarget string) *http.Request {
+	t.Helper()
+
+	req, err := http.NewRequestWithContext(
+		t.Context(),
+		method,
+		"http://localhost:8001",
+		strings.NewReader(body),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("X-Amz-Target", xAmzTarget)
+	return req
 }
 
 type WarmThroughput struct {
@@ -28,21 +45,50 @@ type WarmThroughput struct {
 }
 
 type GlobalSecondaryIndex struct {
-	IndexName      string          `json:"IndexName"`
-	WarmThroughput *WarmThroughput `json:"WarmThroughput"`
+	IndexName      string
+	WarmThroughput *WarmThroughput
 }
 
 type Table struct {
-	GlobalSecondaryIndexes []*GlobalSecondaryIndex `json:"GlobalSecondaryIndexes"`
+	GlobalSecondaryIndexes []*GlobalSecondaryIndex
 
-	WarmThroughput *WarmThroughput `json:"WarmThroughput"`
+	WarmThroughput *WarmThroughput
 }
 
 type DescribeTableResponse struct {
 	Table *Table
 }
 
+func checkRestFieldRemains(t *testing.T, body []byte) {
+	t.Helper()
+
+	// check rest field remains
+	var decoded struct {
+		Table map[string]any
+	}
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		t.Fatal("failed to parse response as JSON:", err.Error())
+	}
+	for _, k := range []string{
+		"AttributeDefinitions",
+		"TableName",
+		"KeySchema",
+		"TableStatus",
+		"CreationDateTime",
+		"ProvisionedThroughput",
+		"TableSizeBytes",
+		"ItemCount",
+		"TableArn",
+		"DeletionProtectionEnabled",
+	} {
+		if _, ok := decoded.Table[k]; !ok {
+			t.Errorf("%s field not present", k)
+		}
+	}
+}
+
 func TestHandler(t *testing.T) {
+	t.Parallel()
 	slog.SetDefault(
 		slog.New(
 			slogcontext.NewHandler(
@@ -52,18 +98,10 @@ func TestHandler(t *testing.T) {
 	)
 
 	t.Run("TableExists", func(t *testing.T) {
+		t.Parallel()
 		h := newTestHandler(t, "TableExists.txt")
 		rec := httptest.NewRecorder()
-		req, err := http.NewRequestWithContext(
-			t.Context(),
-			http.MethodPost,
-			"http://localhost:8001",
-			strings.NewReader(`{"TableName":"test"}`),
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+		req := newCliRequest(t, http.MethodPost, `{"TableName":"test"}`, "DynamoDB_20120810.DescribeTable")
 
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
@@ -93,45 +131,14 @@ func TestHandler(t *testing.T) {
 			}
 		}
 
-		// check rest field remains
-		var decoded2 struct {
-			Table map[string]any
-		}
-		if err := json.Unmarshal(bodyCopy, &decoded2); err != nil {
-			t.Fatal("failed to parse response as JSON:", err.Error())
-		}
-		for _, k := range []string{
-			"AttributeDefinitions",
-			"TableName",
-			"KeySchema",
-			"TableStatus",
-			"CreationDateTime",
-			"ProvisionedThroughput",
-			"TableSizeBytes",
-			"ItemCount",
-			"TableArn",
-			"GlobalSecondaryIndexes",
-			"DeletionProtectionEnabled",
-		} {
-			if _, ok := decoded2.Table[k]; !ok {
-				t.Errorf("%s field not present", k)
-			}
-		}
+		checkRestFieldRemains(t, bodyCopy)
 	})
 
 	t.Run("TableCreatedButNoIndex", func(t *testing.T) {
+		t.Parallel()
 		h := newTestHandler(t, "TableCreatedButNoIndex.txt")
 		rec := httptest.NewRecorder()
-		req, err := http.NewRequestWithContext(
-			t.Context(),
-			http.MethodPost,
-			"http://localhost:8001",
-			strings.NewReader(`{"TableName":"test"}`),
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+		req := newCliRequest(t, http.MethodPost, `{"TableName":"test"}`, "DynamoDB_20120810.DescribeTable")
 
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
@@ -151,44 +158,14 @@ func TestHandler(t *testing.T) {
 			t.Error("table does not have WarmThroughput Field")
 		}
 
-		// check rest field remains
-		var decoded2 struct {
-			Table map[string]any
-		}
-		if err := json.Unmarshal(bodyCopy, &decoded2); err != nil {
-			t.Fatal("failed to parse response as JSON:", err.Error())
-		}
-		for _, k := range []string{
-			"AttributeDefinitions",
-			"TableName",
-			"KeySchema",
-			"TableStatus",
-			"CreationDateTime",
-			"ProvisionedThroughput",
-			"TableSizeBytes",
-			"ItemCount",
-			"TableArn",
-			"DeletionProtectionEnabled",
-		} {
-			if _, ok := decoded2.Table[k]; !ok {
-				t.Errorf("%s field not present", k)
-			}
-		}
+		checkRestFieldRemains(t, bodyCopy)
 	})
 
 	t.Run("AlreadyFilled", func(t *testing.T) {
+		t.Parallel()
 		h := newTestHandler(t, "AlreadyFilled.txt")
 		rec := httptest.NewRecorder()
-		req, err := http.NewRequestWithContext(
-			t.Context(),
-			http.MethodPost,
-			"http://localhost:8001",
-			strings.NewReader(`{"TableName":"test"}`),
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+		req := newCliRequest(t, http.MethodPost, `{"TableName":"test"}`, "DynamoDB_20120810.DescribeTable")
 
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
@@ -223,45 +200,14 @@ func TestHandler(t *testing.T) {
 			}
 		}
 
-		// check rest field remains
-		var decoded2 struct {
-			Table map[string]any
-		}
-		if err := json.Unmarshal(bodyCopy, &decoded2); err != nil {
-			t.Fatal("failed to parse response as JSON:", err.Error())
-		}
-		for _, k := range []string{
-			"AttributeDefinitions",
-			"TableName",
-			"KeySchema",
-			"TableStatus",
-			"CreationDateTime",
-			"ProvisionedThroughput",
-			"TableSizeBytes",
-			"ItemCount",
-			"TableArn",
-			"GlobalSecondaryIndexes",
-			"DeletionProtectionEnabled",
-		} {
-			if _, ok := decoded2.Table[k]; !ok {
-				t.Errorf("%s field not present", k)
-			}
-		}
+		checkRestFieldRemains(t, bodyCopy)
 	})
 
 	t.Run("TableNotFound", func(t *testing.T) {
+		t.Parallel()
 		h := newTestHandler(t, "TableNotFound.txt")
 		rec := httptest.NewRecorder()
-		req, err := http.NewRequestWithContext(
-			t.Context(),
-			http.MethodGet,
-			"http://localhost:8001",
-			strings.NewReader(`{"TableName":"test"}`),
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-		req.Header.Set("X-Amz-Target", "DynamoDB_20120810.DescribeTable")
+		req := newCliRequest(t, http.MethodPost, `{"TableName":"test"}`, "DynamoDB_20120810.DescribeTable")
 
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusBadRequest {

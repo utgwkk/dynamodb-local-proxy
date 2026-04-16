@@ -42,6 +42,34 @@ type DescribeTableResponse struct {
 	Table *Table
 }
 
+func checkRestFieldRemains(t *testing.T, body []byte) {
+	t.Helper()
+
+	// check rest field remains
+	var decoded struct {
+		Table map[string]any
+	}
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		t.Fatal("failed to parse response as JSON:", err.Error())
+	}
+	for _, k := range []string{
+		"AttributeDefinitions",
+		"TableName",
+		"KeySchema",
+		"TableStatus",
+		"CreationDateTime",
+		"ProvisionedThroughput",
+		"TableSizeBytes",
+		"ItemCount",
+		"TableArn",
+		"DeletionProtectionEnabled",
+	} {
+		if _, ok := decoded.Table[k]; !ok {
+			t.Errorf("%s field not present", k)
+		}
+	}
+}
+
 func TestHandler(t *testing.T) {
 	slog.SetDefault(
 		slog.New(
@@ -93,30 +121,7 @@ func TestHandler(t *testing.T) {
 			}
 		}
 
-		// check rest field remains
-		var decoded2 struct {
-			Table map[string]any
-		}
-		if err := json.Unmarshal(bodyCopy, &decoded2); err != nil {
-			t.Fatal("failed to parse response as JSON:", err.Error())
-		}
-		for _, k := range []string{
-			"AttributeDefinitions",
-			"TableName",
-			"KeySchema",
-			"TableStatus",
-			"CreationDateTime",
-			"ProvisionedThroughput",
-			"TableSizeBytes",
-			"ItemCount",
-			"TableArn",
-			"GlobalSecondaryIndexes",
-			"DeletionProtectionEnabled",
-		} {
-			if _, ok := decoded2.Table[k]; !ok {
-				t.Errorf("%s field not present", k)
-			}
-		}
+		checkRestFieldRemains(t, bodyCopy)
 	})
 
 	t.Run("TableCreatedButNoIndex", func(t *testing.T) {
@@ -151,29 +156,7 @@ func TestHandler(t *testing.T) {
 			t.Error("table does not have WarmThroughput Field")
 		}
 
-		// check rest field remains
-		var decoded2 struct {
-			Table map[string]any
-		}
-		if err := json.Unmarshal(bodyCopy, &decoded2); err != nil {
-			t.Fatal("failed to parse response as JSON:", err.Error())
-		}
-		for _, k := range []string{
-			"AttributeDefinitions",
-			"TableName",
-			"KeySchema",
-			"TableStatus",
-			"CreationDateTime",
-			"ProvisionedThroughput",
-			"TableSizeBytes",
-			"ItemCount",
-			"TableArn",
-			"DeletionProtectionEnabled",
-		} {
-			if _, ok := decoded2.Table[k]; !ok {
-				t.Errorf("%s field not present", k)
-			}
-		}
+		checkRestFieldRemains(t, bodyCopy)
 	})
 
 	t.Run("AlreadyFilled", func(t *testing.T) {
@@ -223,30 +206,7 @@ func TestHandler(t *testing.T) {
 			}
 		}
 
-		// check rest field remains
-		var decoded2 struct {
-			Table map[string]any
-		}
-		if err := json.Unmarshal(bodyCopy, &decoded2); err != nil {
-			t.Fatal("failed to parse response as JSON:", err.Error())
-		}
-		for _, k := range []string{
-			"AttributeDefinitions",
-			"TableName",
-			"KeySchema",
-			"TableStatus",
-			"CreationDateTime",
-			"ProvisionedThroughput",
-			"TableSizeBytes",
-			"ItemCount",
-			"TableArn",
-			"GlobalSecondaryIndexes",
-			"DeletionProtectionEnabled",
-		} {
-			if _, ok := decoded2.Table[k]; !ok {
-				t.Errorf("%s field not present", k)
-			}
-		}
+		checkRestFieldRemains(t, bodyCopy)
 	})
 
 	t.Run("TableNotFound", func(t *testing.T) {

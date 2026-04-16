@@ -20,13 +20,19 @@ jobs:
       - run: go mod download -x
       - run: go test -v ./...
   e2e:
-    name: E2E
+    name: E2E (${{ matrix.label }})
     runs-on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        include:
+          - label: dynamodb-local
+            image: amazon/dynamodb-local
+            container-port: 8000
     services:
-      dynamodb-local:
-        image: amazon/dynamodb-local
+      backend:
+        image: ${{ matrix.image }}
         ports:
-          - 8000:8000
+          - 8000:${{ matrix.container-port }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -48,10 +54,16 @@ jobs:
         timeout-minutes: 3
       - run: cat out.log
         if: always()
+  ci-passed:
+    name: CI passed
+    runs-on: ubuntu-24.04-arm
+    needs: [test, e2e]
+    steps:
+      - run: echo OK
   build-and-push:
     name: CD
     runs-on: ubuntu-24.04-arm
-    needs: [test, e2e]
+    needs: [ci-passed]
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6

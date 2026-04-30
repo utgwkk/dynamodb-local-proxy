@@ -9,7 +9,7 @@ require (
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/itchyny/gojq v0.12.19
 	github.com/ne-sachirou/go-graceful v0.2.1
-	github.com/samber/slog-http v1.12.0
+	github.com/samber/slog-http v1.12.1
 	github.com/thinkgos/httpcurl v0.1.2
 )
 

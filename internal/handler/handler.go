@@ -1,12 +1,14 @@
 package handler
 
 import (
-	"context"
+	"bytes"
 	_ "embed"
 	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httputil"
+	"strconv"
 	"strings"
 
 	slogcontext "github.com/PumpkinSeed/slog-context"
@@ -28,18 +30,42 @@ var gojqQuery = util.Must(gojq.Compile(
 type Handler struct {
 	DynamoDBLocalAddr string
 
-	httpClient *http.Client
+	proxy *httputil.ReverseProxy
 }
 
 func New(
 	dynamodbLocalAddr string,
 	httpClient *http.Client,
 ) *Handler {
-	return &Handler{
+	h := &Handler{
 		DynamoDBLocalAddr: dynamodbLocalAddr,
-
-		httpClient: httpClient,
 	}
+
+	transport := httpClient.Transport
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+
+	h.proxy = &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Scheme = "http"
+			req.URL.Host = dynamodbLocalAddr
+			req.Header.Set("User-Agent", "github.com/utgwkk/dynamodb-local-proxy")
+		},
+		Transport: &loggingTransport{rt: transport},
+		ModifyResponse: func(resp *http.Response) error {
+			if isDescribeTableRequest(resp.Request) && resp.StatusCode == http.StatusOK {
+				return rewriteDescribeTableResponse(resp)
+			}
+			return nil
+		},
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			slog.ErrorContext(r.Context(), "proxy error", slog.Any("error", err))
+			w.WriteHeader(http.StatusInternalServerError)
+		},
+	}
+
+	return h
 }
 
 func generateRequestId() string {
@@ -58,55 +84,24 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	sloghttp.AddCustomAttributes(r, slog.String("xAmzTarget", r.Header.Get("X-Amz-Target")))
 
-	if err := h.serveHTTP(w, r); err != nil {
-		slog.ErrorContext(r.Context(), "internal server error", slog.Any("error", err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	h.proxy.ServeHTTP(w, r)
 }
 
-func (h *Handler) serveHTTP(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-	cloneReq := h.cloneRequestForProxy(r)
-
-	curl, err := httpcurl.IntoCurl(cloneReq)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	slog.DebugContext(
-		ctx, "attempting to request",
-		slog.String("asCurl", curl),
-	)
-
-	proxyResp, err := h.httpClient.Do(cloneReq)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer proxyResp.Body.Close()
-
-	slog.DebugContext(
-		ctx, "got an response",
-		slog.String("status", proxyResp.Status),
-	)
-
-	if h.isDescribeTableRequest(cloneReq) && proxyResp.StatusCode == http.StatusOK {
-		return h.rewriteDescribeTableResponse(ctx, w, proxyResp)
-	} else {
-		w.WriteHeader(proxyResp.StatusCode)
-		h.copyHTTPResponseHeader(w, proxyResp)
-		if _, err := io.Copy(w, proxyResp.Body); err != nil {
-			return errors.WithStack(err)
-		}
-	}
-	return nil
+func isDescribeTableRequest(req *http.Request) bool {
+	return strings.HasSuffix(req.Header.Get("X-Amz-Target"), ".DescribeTable")
 }
 
-func (h *Handler) rewriteDescribeTableResponse(ctx context.Context, w http.ResponseWriter, proxyResp *http.Response) error {
+func rewriteDescribeTableResponse(resp *http.Response) error {
+	ctx := resp.Request.Context()
 	slog.InfoContext(ctx, "attempting rewrite response JSON")
+
 	data := map[string]any{}
-	if err := json.NewDecoder(proxyResp.Body).Decode(&data); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return errors.WithStack(err)
 	}
+	resp.Body.Close()
+	resp.Body = http.NoBody
+
 	slog.DebugContext(ctx, "raw response", slog.Any("data", data))
 
 	it := gojqQuery.RunWithContext(ctx, data)
@@ -118,37 +113,35 @@ func (h *Handler) rewriteDescribeTableResponse(ctx context.Context, w http.Respo
 		return errors.WithStack(err)
 	}
 
-	w.WriteHeader(proxyResp.StatusCode)
-	h.copyHTTPResponseHeader(w, proxyResp)
-	if err := json.NewEncoder(w).Encode(out); err != nil {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(out); err != nil {
 		return errors.WithStack(err)
 	}
+
+	resp.Body = io.NopCloser(&buf)
+	resp.ContentLength = int64(buf.Len())
+	resp.Header.Set("Content-Length", strconv.Itoa(buf.Len()))
+
 	slog.InfoContext(ctx, "response rewrite succeeded")
 	return nil
 }
 
-func (h *Handler) cloneRequestForProxy(r *http.Request) *http.Request {
-	cloneReq := r.Clone(r.Context())
-	cloneReq.RequestURI = ""
-	cloneReq.URL.Scheme = "http"
-	cloneReq.URL.Host = h.DynamoDBLocalAddr
-
-	cloneReq.Header.Set("User-Agent", "github.com/utgwkk/dynamodb-local-proxy")
-
-	return cloneReq
+type loggingTransport struct {
+	rt http.RoundTripper
 }
 
-func (h *Handler) copyHTTPResponseHeader(w http.ResponseWriter, proxyResp *http.Response) {
-	for k, headers := range proxyResp.Header {
-		if k == "Content-Length" {
-			continue
-		}
-		for _, h := range headers {
-			w.Header().Add(k, h)
-		}
+func (t *loggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	ctx := req.Context()
+
+	if curl, err := httpcurl.IntoCurl(req); err == nil {
+		slog.DebugContext(ctx, "attempting to request", slog.String("asCurl", curl))
 	}
-}
 
-func (h *Handler) isDescribeTableRequest(req *http.Request) bool {
-	return strings.HasSuffix(req.Header.Get("X-Amz-Target"), ".DescribeTable")
+	resp, err := t.rt.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	slog.DebugContext(ctx, "got a response", slog.String("status", resp.Status))
+	return resp, nil
 }

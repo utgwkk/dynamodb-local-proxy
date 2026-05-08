@@ -4,7 +4,7 @@ go 1.26.1
 
 require (
 	github.com/PumpkinSeed/slog-context v0.1.2
-	github.com/caarlos0/env/v11 v11.4.0
+	github.com/caarlos0/env/v11 v11.4.1
 	github.com/cockroachdb/errors v1.12.0
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/itchyny/gojq v0.12.19

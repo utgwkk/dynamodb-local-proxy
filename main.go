@@ -14,6 +14,7 @@ import (
 	sloghttp "github.com/samber/slog-http"
 	"github.com/utgwkk/dynamodb-local-proxy/internal/config"
 	"github.com/utgwkk/dynamodb-local-proxy/internal/handler"
+	"github.com/utgwkk/slogerr"
 )
 
 func main() {
@@ -21,7 +22,7 @@ func main() {
 
 	cfg, err := config.Parse()
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to parse environment variables", slog.Any("error", err))
+		slog.ErrorContext(ctx, "failed to parse environment variables", slogerr.Error(err))
 		os.Exit(1)
 	}
 
@@ -51,6 +52,6 @@ func main() {
 		mw(h),
 		graceful.GracefulShutdownTimeout(10*time.Second),
 	); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		slog.ErrorContext(ctx, "failed to listen", slog.Any("error", err))
+		slog.ErrorContext(ctx, "failed to listen", slogerr.Error(err))
 	}
 }

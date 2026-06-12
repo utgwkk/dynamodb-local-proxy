@@ -50,6 +50,8 @@ github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsT
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/thinkgos/httpcurl v0.1.2 h1:tKh623+2PTtf2jB26EwyzEdMDzexjldmEeRWvks4lhc=
 github.com/thinkgos/httpcurl v0.1.2/go.mod h1:6/oHRxFowU4lpWVkG0gTZhxsILTUosgzHTAUsUvhANM=
+github.com/utgwkk/slogerr v0.1.0 h1:/qXJtdVwIOWBI++iterrXLlPNyuIGouU2I5Rd7UNBnY=
+github.com/utgwkk/slogerr v0.1.0/go.mod h1:LSmKlY6Svk1WKlTk8z3pUsbqqPMNJEYiPOZ5NHVvDUA=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.opentelemetry.io/otel v1.29.0 h1:PdomN/Al4q/lN6iBJEN3AwPvUiHPMlt93c8bqTG5Llw=

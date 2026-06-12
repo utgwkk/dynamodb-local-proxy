@@ -18,6 +18,7 @@ import (
 	sloghttp "github.com/samber/slog-http"
 	"github.com/thinkgos/httpcurl"
 	"github.com/utgwkk/dynamodb-local-proxy/internal/util"
+	"github.com/utgwkk/slogerr"
 )
 
 //go:embed fill_warm_throughput.jq
@@ -60,7 +61,7 @@ func New(
 			return nil
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			slog.ErrorContext(r.Context(), "proxy error", slog.Any("error", err))
+			slog.ErrorContext(r.Context(), "proxy error", slogerr.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 		},
 	}
@@ -71,7 +72,7 @@ func New(
 func generateRequestId() string {
 	id, err := uuid.NewV6()
 	if err != nil {
-		slog.Error("generateRequestId failed", slog.Any("error", err))
+		slog.Error("generateRequestId failed", slogerr.Error(err))
 		return ""
 	}
 	return id.String()

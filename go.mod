@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/PumpkinSeed/slog-context v0.1.2
 	github.com/caarlos0/env/v11 v11.4.1
-	github.com/cockroachdb/errors v1.13.0
+	github.com/cockroachdb/errors v1.14.0
 	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/itchyny/gojq v0.12.19
 	github.com/ne-sachirou/go-graceful v0.2.1
@@ -27,6 +27,6 @@ require (
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	go.opentelemetry.io/otel v1.29.0 // indirect
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
 )

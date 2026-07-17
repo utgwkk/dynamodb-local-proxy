@@ -11,7 +11,7 @@ require (
 	github.com/ne-sachirou/go-graceful v0.2.1
 	github.com/samber/slog-http v1.12.1
 	github.com/thinkgos/httpcurl v0.1.2
-	github.com/utgwkk/slogerr v0.1.0
+	github.com/utgwkk/slogerr v0.2.1
 )
 
 require (
